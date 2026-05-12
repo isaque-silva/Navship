@@ -3,13 +3,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: navship-app
-    working_dir: /app
-    ports:
-      - "3000:3000"
+    restart: unless-stopped
+    expose:
+      - "3000"
     environment:
-      NODE_ENV: development
-      CHOKIDAR_USEPOLLING: "true"
+      NODE_ENV: production
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}
       SMTP_USER: ${SMTP_USER:-}
@@ -19,7 +17,3 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Site NavShip}
       CONTACT_TO_EMAIL: ${CONTACT_TO_EMAIL:-}
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 3000
