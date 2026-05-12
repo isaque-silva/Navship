@@ -81,6 +81,13 @@ function jsonResponse(body: Record<string, unknown>, init?: ResponseInit): Respo
   });
 }
 
+function getRuntimeEnv(env: WorkerEnv): WorkerEnv {
+  return {
+    ...(typeof process !== "undefined" ? process.env : {}),
+    ...env,
+  };
+}
+
 async function handleContactRequest(request: Request, env: WorkerEnv): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -130,7 +137,7 @@ export default {
       const url = new URL(request.url);
 
       if (url.pathname === "/api/contact") {
-        return await handleContactRequest(request, (env ?? {}) as WorkerEnv);
+        return await handleContactRequest(request, getRuntimeEnv((env ?? {}) as WorkerEnv));
       }
 
       const handler = await getServerEntry();
