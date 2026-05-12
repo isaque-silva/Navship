@@ -147,7 +147,20 @@ async function handleContactRequest(request: Request, env: WorkerEnv): Promise<R
       );
     }
 
-    console.error(error);
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.startsWith("Configuracao ausente:")) {
+      console.error("[api/contact]", message);
+      return jsonResponse(
+        {
+          message:
+            "O envio de e-mail nao esta configurado no servidor. Verifique as variaveis SMTP no painel de deploy.",
+        },
+        { status: 503 },
+      );
+    }
+
+    console.error("[api/contact]", error);
     return jsonResponse(
       { message: "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes." },
       { status: 500 },

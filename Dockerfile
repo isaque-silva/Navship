@@ -9,8 +9,11 @@ RUN npm ci --include=optional \
 
 COPY . .
 
+RUN chmod +x /app/docker-entrypoint.sh
+
 RUN npm run build
 
 EXPOSE 3000
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
