@@ -42,10 +42,11 @@ export function Contact() {
         body: JSON.stringify(formData),
       });
 
-      const result = (await response.json().catch(() => null)) as { message?: string } | null;
+      const result = (await response.json().catch(() => null)) as { message?: string; detail?: string } | null;
 
       if (!response.ok) {
-        throw new Error(result?.message ?? "Nao foi possivel enviar sua solicitacao.");
+        const parts = [result?.message, result?.detail].filter(Boolean);
+        throw new Error(parts.length > 0 ? parts.join(" — ") : "Nao foi possivel enviar sua solicitacao.");
       }
 
       setFormData(INITIAL_FORM);

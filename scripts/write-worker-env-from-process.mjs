@@ -26,6 +26,7 @@ const KEYS = [
   "SMTP_FROM_NAME",
   "CONTACT_TO_EMAIL",
   "INSTITUTIONAL_VIDEO_URL",
+  "CONTACT_DIAGNOSTICS",
 ];
 
 function quoteValue(value) {

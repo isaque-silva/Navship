@@ -14,11 +14,12 @@ type ContactEmailEnv = Record<string, unknown> & {
 function readEnvString(env: ContactEmailEnv, key: keyof ContactEmailEnv): string | undefined {
   const value = env[key];
 
-  if (typeof value !== "string") {
+  if (value === undefined || value === null) {
     return undefined;
   }
 
-  const trimmed = value.trim();
+  const asString = typeof value === "string" ? value : String(value);
+  const trimmed = asString.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 

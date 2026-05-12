@@ -1,5 +1,11 @@
 import "./lib/error-capture";
 
+import {
+  ConfigurationError,
+  SmtpAuthError,
+  SmtpCommandError,
+  SmtpConnectionError,
+} from "@ryyr/worker-mailer";
 import { ZodError } from "zod";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { sendContactEmail } from "./lib/contact-email";
@@ -88,14 +94,25 @@ function getRuntimeEnv(env: WorkerEnv): WorkerEnv {
   };
 }
 
+function diagnosticsEnabled(env: WorkerEnv): boolean {
+  const raw = getEnvString(env, "CONTACT_DIAGNOSTICS");
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
+function safeDiagnosticDetail(message: string): string {
+  const trimmed = message.trim().slice(0, 400);
+  return trimmed.replace(/pass(word)?[=:]\s*\S+/gi, "password=***");
+}
+
 function getEnvString(env: WorkerEnv, key: string): string | undefined {
   const value = env[key];
 
-  if (typeof value !== "string") {
+  if (value === undefined || value === null) {
     return undefined;
   }
 
-  const trimmed = value.trim();
+  const asString = typeof value === "string" ? value : String(value);
+  const trimmed = asString.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
@@ -160,11 +177,60 @@ async function handleContactRequest(request: Request, env: WorkerEnv): Promise<R
       );
     }
 
+    if (error instanceof ConfigurationError) {
+      console.error("[api/contact] configuracao SMTP:", message);
+      const body: Record<string, unknown> = {
+        message:
+          "Configuracao SMTP invalida ou incompleta. Revise SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_START_TLS e credenciais no painel de deploy.",
+      };
+      if (diagnosticsEnabled(env)) {
+        body.detail = safeDiagnosticDetail(message);
+      }
+      return jsonResponse(body, { status: 400 });
+    }
+
+    if (error instanceof SmtpConnectionError) {
+      console.error("[api/contact] conexao SMTP:", error);
+      const body: Record<string, unknown> = {
+        message:
+          "Nao foi possivel conectar ao servidor SMTP. Verifique host, porta, firewall e se o provedor permite o envio a partir deste servidor.",
+      };
+      if (diagnosticsEnabled(env)) {
+        body.detail = safeDiagnosticDetail(message);
+      }
+      return jsonResponse(body, { status: 502 });
+    }
+
+    if (error instanceof SmtpAuthError) {
+      console.error("[api/contact] autenticacao SMTP:", error);
+      const body: Record<string, unknown> = {
+        message: "Falha na autenticacao SMTP. Verifique SMTP_USER e SMTP_PASS.",
+      };
+      if (diagnosticsEnabled(env)) {
+        body.detail = safeDiagnosticDetail(message);
+      }
+      return jsonResponse(body, { status: 502 });
+    }
+
+    if (error instanceof SmtpCommandError) {
+      console.error("[api/contact] comando SMTP:", error);
+      const body: Record<string, unknown> = {
+        message: "O servidor SMTP rejeitou o envio. Verifique remetente, destinatario e politicas do provedor.",
+      };
+      if (diagnosticsEnabled(env)) {
+        body.detail = safeDiagnosticDetail(`${message} | ${error.response ?? ""}`);
+      }
+      return jsonResponse(body, { status: 502 });
+    }
+
     console.error("[api/contact]", error);
-    return jsonResponse(
-      { message: "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes." },
-      { status: 500 },
-    );
+    const body: Record<string, unknown> = {
+      message: "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.",
+    };
+    if (diagnosticsEnabled(env)) {
+      body.detail = safeDiagnosticDetail(message);
+    }
+    return jsonResponse(body, { status: 500 });
   }
 }
 
