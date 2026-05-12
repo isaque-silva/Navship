@@ -1,12 +1,17 @@
 node_modules
 dist
 dist-ssr
+.env
+.env.*
+.dev.vars
+.dev.vars.*
 .git
 .cursor
 .wrangler
 .tanstack
 .vinxi
 .output
+src/assets/institucional_full.mp4
 terminals
 agent-transcripts
 npm-debug.log*

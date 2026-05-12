@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import institutionalVideo from "@/assets/institucional_full.mp4";
 import drydockPoster from "@/assets/drydock.jpg";
 
 export function InstitutionalVideo() {
@@ -70,7 +69,7 @@ export function InstitutionalVideo() {
 
           <video
             ref={videoRef}
-            src={institutionalVideo}
+            src="/media/institutional-video"
             poster={drydockPoster}
             controls
             muted

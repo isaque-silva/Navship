@@ -88,6 +88,30 @@ function getRuntimeEnv(env: WorkerEnv): WorkerEnv {
   };
 }
 
+function getEnvString(env: WorkerEnv, key: string): string | undefined {
+  const value = env[key];
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function handleInstitutionalVideoRequest(env: WorkerEnv): Response {
+  const videoUrl = getEnvString(env, "INSTITUTIONAL_VIDEO_URL");
+
+  if (!videoUrl) {
+    return jsonResponse(
+      { message: "Video institucional nao configurado. Defina INSTITUTIONAL_VIDEO_URL no ambiente." },
+      { status: 404 },
+    );
+  }
+
+  return Response.redirect(videoUrl, 302);
+}
+
 async function handleContactRequest(request: Request, env: WorkerEnv): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -135,9 +159,14 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
+      const runtimeEnv = getRuntimeEnv((env ?? {}) as WorkerEnv);
+
+      if (url.pathname === "/media/institutional-video") {
+        return handleInstitutionalVideoRequest(runtimeEnv);
+      }
 
       if (url.pathname === "/api/contact") {
-        return await handleContactRequest(request, getRuntimeEnv((env ?? {}) as WorkerEnv));
+        return await handleContactRequest(request, runtimeEnv);
       }
 
       const handler = await getServerEntry();
