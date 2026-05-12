@@ -1,10 +1,11 @@
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci
+RUN npm ci --include=optional \
+  && test -f /app/node_modules/@cloudflare/workerd-linux-64/bin/workerd
 
 COPY . .
 
