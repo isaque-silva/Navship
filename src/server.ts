@@ -104,6 +104,44 @@ function safeDiagnosticDetail(message: string): string {
   return trimmed.replace(/pass(word)?[=:]\s*\S+/gi, "password=***");
 }
 
+/**
+ * O bundle do Worker pode incluir duas cópias de @ryyr/worker-mailer; aí
+ * `instanceof SmtpAuthError` falha mesmo com o erro correto. Usamos também `name`.
+ */
+function getMailerFailureKind(error: unknown): "configuration" | "connection" | "auth" | "command" | "validation" | null {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const name = (error as { name?: string }).name;
+
+  if (error instanceof ConfigurationError || name === "ConfigurationError") {
+    return "configuration";
+  }
+  if (error instanceof SmtpConnectionError || name === "SmtpConnectionError") {
+    return "connection";
+  }
+  if (error instanceof SmtpAuthError || name === "SmtpAuthError") {
+    return "auth";
+  }
+  if (error instanceof SmtpCommandError || name === "SmtpCommandError") {
+    return "command";
+  }
+  if (name === "EmailValidationError" || name === "CrlfInjectionError") {
+    return "validation";
+  }
+
+  return null;
+}
+
+function getSmtpCommandResponse(error: unknown): string | undefined {
+  if (error && typeof error === "object" && "response" in error) {
+    const response = (error as { response?: unknown }).response;
+    return typeof response === "string" ? response : undefined;
+  }
+  return undefined;
+}
+
 function getEnvString(env: WorkerEnv, key: string): string | undefined {
   const value = env[key];
 
@@ -192,7 +230,9 @@ async function handleContactRequest(request: Request, env: WorkerEnv): Promise<R
       );
     }
 
-    if (error instanceof ConfigurationError) {
+    const mailerKind = getMailerFailureKind(error);
+
+    if (mailerKind === "configuration") {
       console.error("[api/contact] configuracao SMTP:", message);
       const body: Record<string, unknown> = {
         message:
@@ -204,7 +244,7 @@ async function handleContactRequest(request: Request, env: WorkerEnv): Promise<R
       return jsonResponse(body, { status: 400 });
     }
 
-    if (error instanceof SmtpConnectionError) {
+    if (mailerKind === "connection") {
       console.error("[api/contact] conexao SMTP:", error);
       const body: Record<string, unknown> = {
         message:
@@ -216,7 +256,7 @@ async function handleContactRequest(request: Request, env: WorkerEnv): Promise<R
       return jsonResponse(body, { status: 502 });
     }
 
-    if (error instanceof SmtpAuthError) {
+    if (mailerKind === "auth") {
       console.error("[api/contact] autenticacao SMTP:", error);
       const body: Record<string, unknown> = {
         message: "Falha na autenticacao SMTP. Verifique SMTP_USER e SMTP_PASS.",
@@ -227,15 +267,27 @@ async function handleContactRequest(request: Request, env: WorkerEnv): Promise<R
       return jsonResponse(body, { status: 502 });
     }
 
-    if (error instanceof SmtpCommandError) {
+    if (mailerKind === "command") {
       console.error("[api/contact] comando SMTP:", error);
+      const response = getSmtpCommandResponse(error);
       const body: Record<string, unknown> = {
         message: "O servidor SMTP rejeitou o envio. Verifique remetente, destinatario e politicas do provedor.",
       };
       if (diagnosticsEnabled(env)) {
-        body.detail = safeDiagnosticDetail(`${message} | ${error.response ?? ""}`);
+        body.detail = safeDiagnosticDetail(`${message} | ${response ?? ""}`);
       }
       return jsonResponse(body, { status: 502 });
+    }
+
+    if (mailerKind === "validation") {
+      console.error("[api/contact] validacao e-mail:", message);
+      return jsonResponse(
+        {
+          message:
+            "O servidor recusou o conteudo do e-mail (validacao). Revise nome, e-mail de resposta e mensagem, ou contate o suporte.",
+        },
+        { status: 400 },
+      );
     }
 
     console.error("[api/contact]", error);
