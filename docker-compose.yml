@@ -9,8 +9,10 @@ services:
     volumes:
       - ./docker/nginx-gateway.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - navship-app
-      - navship-backend
+      navship-app:
+        condition: service_healthy
+      navship-backend:
+        condition: service_healthy
 
   navship-app:
     build:
@@ -22,6 +24,18 @@ services:
     environment:
       NODE_ENV: production
       INSTITUTIONAL_VIDEO_URL: ${INSTITUTIONAL_VIDEO_URL:-}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
 
   navship-backend:
     build:
@@ -45,3 +59,15 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Site NavShip}
       CONTACT_TO_EMAIL: ${CONTACT_TO_EMAIL:-}
       CONTACT_DIAGNOSTICS: ${CONTACT_DIAGNOSTICS:-}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
