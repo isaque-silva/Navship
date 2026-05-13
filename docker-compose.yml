@@ -29,5 +29,18 @@ services:
     restart: unless-stopped
     expose:
       - "4000"
-    env_file:
-      - ./backend/.env
+    # Sem env_file: o ficheiro backend/.env nao existe no clone do Git (Dokploy falhava).
+    # Defina as mesmas variaveis no painel Environment do projeto ou num .env na raiz do compose.
+    environment:
+      NODE_ENV: production
+      PORT: ${BACKEND_PORT:-4000}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_START_TLS: ${SMTP_START_TLS:-true}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Site NavShip}
+      CONTACT_TO_EMAIL: ${CONTACT_TO_EMAIL:-}
+      CONTACT_DIAGNOSTICS: ${CONTACT_DIAGNOSTICS:-}
