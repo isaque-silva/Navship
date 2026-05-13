@@ -129,6 +129,21 @@ function handleInstitutionalVideoRequest(env: WorkerEnv): Response {
   return Response.redirect(videoUrl, 302);
 }
 
+function handlePublicConfigRequest(env: WorkerEnv): Response {
+  const institutionalVideoUrl = getEnvString(env, "INSTITUTIONAL_VIDEO_URL") ?? null;
+
+  return Response.json(
+    { institutionalVideoUrl },
+    {
+      status: 200,
+      headers: {
+        "cache-control": "public, max-age=120",
+        "content-type": "application/json; charset=utf-8",
+      },
+    },
+  );
+}
+
 async function handleContactRequest(request: Request, env: WorkerEnv): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -193,7 +208,7 @@ async function handleContactRequest(request: Request, env: WorkerEnv): Promise<R
       console.error("[api/contact] conexao SMTP:", error);
       const body: Record<string, unknown> = {
         message:
-          "Nao foi possivel conectar ao servidor SMTP. Verifique host, porta, firewall e se o provedor permite o envio a partir deste servidor.",
+          "Nao foi possivel conectar ao servidor SMTP. Verifique host, porta, firewall (saida TCP) e se o provedor permite o envio a partir deste servidor.",
       };
       if (diagnosticsEnabled(env)) {
         body.detail = safeDiagnosticDetail(message);
@@ -242,6 +257,10 @@ export default {
 
       if (url.pathname === "/media/institutional-video") {
         return handleInstitutionalVideoRequest(runtimeEnv);
+      }
+
+      if (url.pathname === "/api/public-config" && request.method === "GET") {
+        return handlePublicConfigRequest(runtimeEnv);
       }
 
       if (url.pathname === "/api/contact") {

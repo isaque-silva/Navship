@@ -1,13 +1,42 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import drydockPoster from "@/assets/drydock.jpg";
+
+type PublicConfigResponse = {
+  institutionalVideoUrl?: string | null;
+};
 
 export function InstitutionalVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/public-config");
+        if (!response.ok) {
+          return;
+        }
+        const data = (await response.json()) as PublicConfigResponse;
+        const url = typeof data.institutionalVideoUrl === "string" ? data.institutionalVideoUrl.trim() : "";
+        if (!cancelled && url.length > 0) {
+          setVideoSrc(url);
+        }
+      } catch {
+        /* Mantém player sem src se a API falhar. */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
 
-    if (!video) {
+    if (!video || !videoSrc) {
       return;
     }
 
@@ -41,7 +70,7 @@ export function InstitutionalVideo() {
     observer.observe(video);
 
     return () => observer.disconnect();
-  }, []);
+  }, [videoSrc]);
 
   return (
     <section id="institucional" className="bg-background py-28">
@@ -67,18 +96,25 @@ export function InstitutionalVideo() {
             <span>Navegantes/SC</span>
           </div>
 
-          <video
-            ref={videoRef}
-            src="/media/institutional-video"
-            poster={drydockPoster}
-            controls
-            muted
-            playsInline
-            preload="metadata"
-            className="aspect-video w-full rounded-[1.4rem] bg-black object-cover"
-          >
-            Seu navegador não suporta a reprodução de vídeo.
-          </video>
+          {videoSrc ? (
+            <video
+              ref={videoRef}
+              src={videoSrc}
+              poster={drydockPoster}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              className="aspect-video w-full rounded-[1.4rem] bg-black object-cover"
+            >
+              Seu navegador não suporta a reprodução de vídeo.
+            </video>
+          ) : (
+            <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-[1.4rem] bg-black/40 px-6 text-center text-sm text-white/80">
+              <p>Vídeo institucional indisponível neste ambiente.</p>
+              <p className="text-xs text-white/60">Configure INSTITUTIONAL_VIDEO_URL no painel de deploy.</p>
+            </div>
+          )}
         </div>
       </div>
     </section>
