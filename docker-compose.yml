@@ -25,6 +25,8 @@ services:
     environment:
       NODE_ENV: production
       INSTITUTIONAL_VIDEO_URL: ${INSTITUTIONAL_VIDEO_URL:-}
+      # Encaminhamento de POST /api/contact no Worker quando o dominio aponta para este container (sem nginx).
+      MAIL_BACKEND_INTERNAL_URL: ${MAIL_BACKEND_INTERNAL_URL:-http://navship-backend:4000}
     healthcheck:
       test:
         [

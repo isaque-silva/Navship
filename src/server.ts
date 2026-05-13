@@ -123,6 +123,96 @@ function handlePublicConfigRequest(env: WorkerEnv): Response {
   );
 }
 
+/**
+ * Quando o proxy (Dokploy) aponta o dominio direto para navship-app e nao para o nginx,
+ * o pedido POST /api/contact chega aqui. Encaminhamos ao servico Node de e-mail na rede Docker.
+ */
+async function handleContactProxyRequest(request: Request, env: WorkerEnv): Promise<Response> {
+  const runtimeEnv = getRuntimeEnv(env);
+  const base = getEnvString(runtimeEnv, "MAIL_BACKEND_INTERNAL_URL");
+
+  if (!base) {
+    return jsonResponse(
+      {
+        message:
+          "Formulario de contato indisponivel nesta configuracao. Defina MAIL_BACKEND_INTERNAL_URL no servico navship-app ou aponte o dominio para navship-gateway.",
+      },
+      { status: 503 },
+    );
+  }
+
+  let targetUrl: string;
+  try {
+    const u = new URL(base.includes("://") ? base : `http://${base}`);
+    u.pathname = "/api/contact";
+    u.search = "";
+    u.hash = "";
+    targetUrl = u.toString();
+  } catch {
+    return jsonResponse({ message: "MAIL_BACKEND_INTERNAL_URL invalida." }, { status: 503 });
+  }
+
+  if (request.method === "OPTIONS") {
+    const origin = request.headers.get("origin") ?? "";
+    const r = await fetch(targetUrl, {
+      method: "OPTIONS",
+      headers: origin ? { origin } : undefined,
+    });
+    const headers = new Headers();
+    headers.set("cache-control", "no-store");
+    const copy = ["access-control-allow-origin", "access-control-allow-methods", "access-control-allow-headers", "access-control-max-age"] as const;
+    for (const key of copy) {
+      const v = r.headers.get(key);
+      if (v) {
+        headers.set(key, v);
+      }
+    }
+    if (!headers.has("access-control-allow-origin")) {
+      headers.set("access-control-allow-origin", "*");
+    }
+    return new Response(null, { status: r.status === 204 ? 204 : r.status, headers });
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ message: "Metodo nao permitido." }, { status: 405, headers: { allow: "POST, OPTIONS" } });
+  }
+
+  const body = await request.text();
+  let r: Response;
+  try {
+    r = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "content-type": request.headers.get("content-type") ?? "application/json",
+        accept: "application/json",
+      },
+      body,
+    });
+  } catch (err) {
+    console.error("[api/contact] proxy para backend:", err);
+    return jsonResponse(
+      {
+        message:
+          "Nao foi possivel contactar o servico de e-mail interno. Verifique MAIL_BACKEND_INTERNAL_URL e se navship-backend esta a correr.",
+      },
+      { status: 502 },
+    );
+  }
+
+  const outHeaders = new Headers();
+  outHeaders.set("cache-control", "no-store");
+  const ct = r.headers.get("content-type");
+  if (ct) {
+    outHeaders.set("content-type", ct);
+  }
+  const allowOrigin = r.headers.get("access-control-allow-origin");
+  if (allowOrigin) {
+    outHeaders.set("access-control-allow-origin", allowOrigin);
+  }
+  const text = await r.text();
+  return new Response(text, { status: r.status, headers: outHeaders });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
@@ -135,6 +225,10 @@ export default {
 
       if (url.pathname === "/api/public-config" && request.method === "GET") {
         return handlePublicConfigRequest(runtimeEnv);
+      }
+
+      if (url.pathname === "/api/contact") {
+        return await handleContactProxyRequest(request, runtimeEnv);
       }
 
       const handler = await getServerEntry();

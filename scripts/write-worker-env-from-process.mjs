@@ -14,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const outPath = resolve(root, "dist/server/.dev.vars");
 
-const KEYS = ["INSTITUTIONAL_VIDEO_URL"];
+const KEYS = ["INSTITUTIONAL_VIDEO_URL", "MAIL_BACKEND_INTERNAL_URL"];
 
 function quoteValue(value) {
   if (value.includes("\n") || value.includes("\r")) {
