@@ -3,8 +3,8 @@
  * Grava dist/server/.dev.vars a partir de process.env.
  *
  * No preview com @cloudflare/vite-plugin, o Worker lê variáveis desse arquivo
- * (gerado no build). No Docker/Dokploy as credenciais chegam em runtime, então
- * precisamos regravar o arquivo na subida do container.
+ * (gerado no build). No Docker/Dokploy as variaveis do site (ex.: video) chegam em
+ * runtime; regravamos o arquivo na subida. SMTP fica em backend/.env (servico separado).
  */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -14,20 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const outPath = resolve(root, "dist/server/.dev.vars");
 
-const KEYS = [
-  "SMTP_HOST",
-  "SMTP_PORT",
-  "SMTP_USER",
-  "SMTP_PASS",
-  "SMTP_SECURE",
-  "SMTP_START_TLS",
-  "SMTP_AUTH_TYPE",
-  "SMTP_FROM",
-  "SMTP_FROM_NAME",
-  "CONTACT_TO_EMAIL",
-  "INSTITUTIONAL_VIDEO_URL",
-  "CONTACT_DIAGNOSTICS",
-];
+const KEYS = ["INSTITUTIONAL_VIDEO_URL"];
 
 function quoteValue(value) {
   if (value.includes("\n") || value.includes("\r")) {

@@ -1,15 +1,6 @@
 import "./lib/error-capture";
 
-import {
-  ConfigurationError,
-  SmtpAuthError,
-  SmtpCommandError,
-  SmtpConnectionError,
-} from "@ryyr/worker-mailer";
-import { ZodError } from "zod";
 import { consumeLastCapturedError } from "./lib/error-capture";
-import { sendContactEmail } from "./lib/contact-email";
-import { parseContactForm } from "./lib/contact-form";
 import { renderErrorPage } from "./lib/error-page";
 
 type ServerEntry = {
@@ -61,8 +52,6 @@ function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boole
   );
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
@@ -92,54 +81,6 @@ function getRuntimeEnv(env: WorkerEnv): WorkerEnv {
     ...(typeof process !== "undefined" ? process.env : {}),
     ...env,
   };
-}
-
-function diagnosticsEnabled(env: WorkerEnv): boolean {
-  const raw = getEnvString(env, "CONTACT_DIAGNOSTICS");
-  return raw === "1" || raw === "true" || raw === "yes";
-}
-
-function safeDiagnosticDetail(message: string): string {
-  const trimmed = message.trim().slice(0, 400);
-  return trimmed.replace(/pass(word)?[=:]\s*\S+/gi, "password=***");
-}
-
-/**
- * O bundle do Worker pode incluir duas cópias de @ryyr/worker-mailer; aí
- * `instanceof SmtpAuthError` falha mesmo com o erro correto. Usamos também `name`.
- */
-function getMailerFailureKind(error: unknown): "configuration" | "connection" | "auth" | "command" | "validation" | null {
-  if (!error || typeof error !== "object") {
-    return null;
-  }
-
-  const name = (error as { name?: string }).name;
-
-  if (error instanceof ConfigurationError || name === "ConfigurationError") {
-    return "configuration";
-  }
-  if (error instanceof SmtpConnectionError || name === "SmtpConnectionError") {
-    return "connection";
-  }
-  if (error instanceof SmtpAuthError || name === "SmtpAuthError") {
-    return "auth";
-  }
-  if (error instanceof SmtpCommandError || name === "SmtpCommandError") {
-    return "command";
-  }
-  if (name === "EmailValidationError" || name === "CrlfInjectionError") {
-    return "validation";
-  }
-
-  return null;
-}
-
-function getSmtpCommandResponse(error: unknown): string | undefined {
-  if (error && typeof error === "object" && "response" in error) {
-    const response = (error as { response?: unknown }).response;
-    return typeof response === "string" ? response : undefined;
-  }
-  return undefined;
 }
 
 function getEnvString(env: WorkerEnv, key: string): string | undefined {
@@ -182,125 +123,6 @@ function handlePublicConfigRequest(env: WorkerEnv): Response {
   );
 }
 
-async function handleContactRequest(request: Request, env: WorkerEnv): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        allow: "POST, OPTIONS",
-      },
-    });
-  }
-
-  if (request.method !== "POST") {
-    return jsonResponse({ message: "Metodo nao permitido." }, { status: 405, headers: { allow: "POST, OPTIONS" } });
-  }
-
-  let payload: unknown;
-
-  try {
-    payload = await request.json();
-  } catch {
-    return jsonResponse({ message: "Nao foi possivel ler os dados do formulario." }, { status: 400 });
-  }
-
-  try {
-    const data = parseContactForm(payload);
-    await sendContactEmail(data, env);
-
-    return jsonResponse({ message: "Solicitacao enviada com sucesso. Em breve nossa equipe entrara em contato." });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return jsonResponse(
-        { message: error.issues[0]?.message ?? "Dados invalidos. Revise o formulario e tente novamente." },
-        { status: 400 },
-      );
-    }
-
-    const message = error instanceof Error ? error.message : String(error);
-
-    if (message.startsWith("Configuracao ausente:")) {
-      console.error("[api/contact]", message);
-      return jsonResponse(
-        {
-          message:
-            "O envio de e-mail nao esta configurado no servidor. Verifique as variaveis SMTP no painel de deploy.",
-        },
-        { status: 503 },
-      );
-    }
-
-    const mailerKind = getMailerFailureKind(error);
-
-    if (mailerKind === "configuration") {
-      console.error("[api/contact] configuracao SMTP:", message);
-      const body: Record<string, unknown> = {
-        message:
-          "Configuracao SMTP invalida ou incompleta. Revise SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_START_TLS e credenciais no painel de deploy.",
-      };
-      if (diagnosticsEnabled(env)) {
-        body.detail = safeDiagnosticDetail(message);
-      }
-      return jsonResponse(body, { status: 400 });
-    }
-
-    if (mailerKind === "connection") {
-      console.error("[api/contact] conexao SMTP:", error);
-      const body: Record<string, unknown> = {
-        message:
-          "Nao foi possivel conectar ao servidor SMTP. Verifique host, porta, firewall (saida TCP) e se o provedor permite o envio a partir deste servidor.",
-      };
-      if (diagnosticsEnabled(env)) {
-        body.detail = safeDiagnosticDetail(message);
-      }
-      return jsonResponse(body, { status: 502 });
-    }
-
-    if (mailerKind === "auth") {
-      console.error("[api/contact] autenticacao SMTP:", error);
-      const body: Record<string, unknown> = {
-        message: "Falha na autenticacao SMTP. Verifique SMTP_USER e SMTP_PASS.",
-      };
-      if (diagnosticsEnabled(env)) {
-        body.detail = safeDiagnosticDetail(message);
-      }
-      return jsonResponse(body, { status: 502 });
-    }
-
-    if (mailerKind === "command") {
-      console.error("[api/contact] comando SMTP:", error);
-      const response = getSmtpCommandResponse(error);
-      const body: Record<string, unknown> = {
-        message: "O servidor SMTP rejeitou o envio. Verifique remetente, destinatario e politicas do provedor.",
-      };
-      if (diagnosticsEnabled(env)) {
-        body.detail = safeDiagnosticDetail(`${message} | ${response ?? ""}`);
-      }
-      return jsonResponse(body, { status: 502 });
-    }
-
-    if (mailerKind === "validation") {
-      console.error("[api/contact] validacao e-mail:", message);
-      return jsonResponse(
-        {
-          message:
-            "O servidor recusou o conteudo do e-mail (validacao). Revise nome, e-mail de resposta e mensagem, ou contate o suporte.",
-        },
-        { status: 400 },
-      );
-    }
-
-    console.error("[api/contact]", error);
-    const body: Record<string, unknown> = {
-      message: "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.",
-    };
-    if (diagnosticsEnabled(env)) {
-      body.detail = safeDiagnosticDetail(message);
-    }
-    return jsonResponse(body, { status: 500 });
-  }
-}
-
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
@@ -313,10 +135,6 @@ export default {
 
       if (url.pathname === "/api/public-config" && request.method === "GET") {
         return handlePublicConfigRequest(runtimeEnv);
-      }
-
-      if (url.pathname === "/api/contact") {
-        return await handleContactRequest(request, runtimeEnv);
       }
 
       const handler = await getServerEntry();

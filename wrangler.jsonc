@@ -3,10 +3,5 @@
   "name": "tanstack-start-app",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "src/server.ts",
-  "vars": {
-    "SMTP_FROM": "comercial@navship.com.br",
-    "SMTP_FROM_NAME": "Site NavShip",
-    "CONTACT_TO_EMAIL": "comercial@navship.com.br",
-  },
+  "main": "src/server.ts"
 }
