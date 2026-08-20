@@ -1,6 +1,6 @@
-import { V as jsxRuntimeExports, r as reactExports } from "./server-s-qwSZVY.js";
-import { c as createLucideIcon, N as Navbar, F as Footer } from "./Footer-DbfBPr-y.js";
-import { L as Link } from "./router-Dj7QNkyv.js";
+import { V as jsxRuntimeExports, r as reactExports } from "./server-1fxiZzf_.js";
+import { c as createLucideIcon, N as Navbar, F as Footer } from "./Footer-DLhdySW5.js";
+import { L as Link } from "./router-B603ERvm.js";
 import "node:async_hooks";
 import "node:stream/web";
 import "node:stream";
@@ -193,7 +193,7 @@ const __iconNode = [
   ]
 ];
 const Wrench = createLucideIcon("wrench", __iconNode);
-const hero = "/assets/hero-shipyard-gJ46nAcm.jpg";
+const hero = "/Navship/assets/hero-shipyard-gJ46nAcm.jpg";
 function Hero() {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { id: "top", className: "relative isolate min-h-screen overflow-hidden", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -250,7 +250,7 @@ function Hero() {
     ] })
   ] });
 }
-const drydockPoster = "/assets/drydock-Cy1W2guv.jpg";
+const drydockPoster = "/Navship/assets/drydock-Cy1W2guv.jpg";
 function About() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("section", { id: "sobre", className: "relative bg-background py-28", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mx-auto grid max-w-7xl grid-cols-1 gap-16 px-6 lg:grid-cols-2 lg:items-center", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
@@ -454,7 +454,7 @@ function Values() {
     )) })
   ] }) });
 }
-const aerial = "/assets/aerial-BTrN4Yke.jpg";
+const aerial = "/Navship/assets/aerial-BTrN4Yke.jpg";
 function Numbers() {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { id: "numeros", className: "relative isolate overflow-hidden py-28 text-white", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -551,7 +551,7 @@ function Compliance() {
     }) })
   ] }) });
 }
-const welding = "/assets/welding-BK7h9kfQ.jpg";
+const welding = "/Navship/assets/welding-BK7h9kfQ.jpg";
 const INITIAL_FORM = {
   name: "",
   company: "",

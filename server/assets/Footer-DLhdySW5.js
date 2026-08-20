@@ -1,4 +1,4 @@
-import { O as useRouter, V as jsxRuntimeExports, r as reactExports } from "./server-s-qwSZVY.js";
+import { O as useRouter, V as jsxRuntimeExports, r as reactExports } from "./server-1fxiZzf_.js";
 function useRouterState(opts) {
   const contextRouter = useRouter({ warn: opts?.router === void 0 });
   const router = opts?.router || contextRouter;
@@ -7,7 +7,7 @@ function useRouterState(opts) {
     return opts?.select ? opts.select(state) : state;
   }
 }
-const logoSrc = "/assets/navship-logo-BNGXHO8i.png";
+const logoSrc = "/Navship/assets/navship-logo-BNGXHO8i.png";
 function Logo({ className = "", invert = false }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `flex items-center ${className}`, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
     "img",
