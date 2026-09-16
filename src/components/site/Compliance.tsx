@@ -68,7 +68,7 @@ export function Compliance() {
             );
             if (internal) {
               return (
-                <Link key={title} to={href} className={className}>
+                <Link key={title} to="/lgpd" className={className}>
                   {inner}
                 </Link>
               );

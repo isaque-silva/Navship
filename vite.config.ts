@@ -10,7 +10,11 @@ const extraPreviewHosts =
     .map((host) => host.trim())
     .filter(Boolean) ?? [];
 
+const base = process.env.VITE_BASE_PATH ?? "/Navship/";
+const routerBasepath = base === "/" ? undefined : base.replace(/\/$/, "");
+
 export default defineConfig({
+  base,
   server: {
     proxy: {
       "/api/contact": {
@@ -38,6 +42,12 @@ export default defineConfig({
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tanstackStart({
       server: { entry: "server" },
+      ...(routerBasepath ? { router: { basepath: routerBasepath } } : {}),
+      spa: { enabled: true },
+      prerender: {
+        enabled: true,
+        crawlLinks: false,
+      },
     }),
     tsconfigPaths(),
     tailwindcss(),

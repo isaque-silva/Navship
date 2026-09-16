@@ -11,6 +11,7 @@ COPY . .
 
 RUN chmod +x /app/docker-entrypoint.sh
 
+ENV VITE_BASE_PATH=/
 RUN npm run build
 
 EXPOSE 3000

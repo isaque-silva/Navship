@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
+import { getBasePath } from "@/lib/site";
 import { Logo } from "./Logo";
 import { Menu, X } from "lucide-react";
 
@@ -15,7 +16,7 @@ const links = [
 export function Navbar({ solid = false }: { solid?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isHome = pathname === "/";
-  const hrefFor = (hash: string) => (isHome ? hash : `/${hash}`);
+  const hrefFor = (hash: string) => (isHome ? hash : `${getBasePath()}${hash}`);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -37,7 +38,7 @@ export function Navbar({ solid = false }: { solid?: boolean }) {
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <a href={isHome ? "#top" : "/"} aria-label="NavShip — início">
+        <a href={isHome ? "#top" : getBasePath()} aria-label="NavShip — início">
           <Logo invert={!isSolid} />
         </a>
         <nav className="hidden items-center gap-8 md:flex">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import welding from "@/assets/welding.jpg";
 import type { ContactFormPayload } from "@/lib/contact-form";
+import { getContactApiUrl } from "@/lib/site";
 import { Phone, MapPin, Mail, ArrowRight } from "lucide-react";
 
 const INITIAL_FORM: ContactFormPayload = {
@@ -34,7 +35,7 @@ export function Contact() {
     setFeedback(null);
 
     try {
-      const response = await fetch("/api/contact", {
+      const response = await fetch(getContactApiUrl(), {
         method: "POST",
         headers: {
           "content-type": "application/json",

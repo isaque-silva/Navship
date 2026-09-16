@@ -1,9 +1,25 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import drydockPoster from "@/assets/drydock.jpg";
+import { getPublicConfigUrl } from "@/lib/site";
 
 type PublicConfigResponse = {
   institutionalVideoUrl?: string | null;
 };
+
+function isEmbedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.pathname.includes("/embed/") ||
+      parsed.hostname.includes("youtube.com") ||
+      parsed.hostname.includes("youtu.be") ||
+      parsed.hostname.includes("vimeo.com") ||
+      parsed.hostname.includes("anonmp4.art")
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function InstitutionalVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -14,7 +30,15 @@ export function InstitutionalVideo() {
 
     void (async () => {
       try {
-        const response = await fetch("/api/public-config");
+        const bakedUrl = import.meta.env.VITE_INSTITUTIONAL_VIDEO_URL?.trim();
+        if (bakedUrl) {
+          if (!cancelled) {
+            setVideoSrc(bakedUrl);
+          }
+          return;
+        }
+
+        const response = await fetch(getPublicConfigUrl());
         if (!response.ok) {
           return;
         }
@@ -36,7 +60,7 @@ export function InstitutionalVideo() {
   useEffect(() => {
     const video = videoRef.current;
 
-    if (!video || !videoSrc) {
+    if (!video || !videoSrc || isEmbedUrl(videoSrc)) {
       return;
     }
 
@@ -72,6 +96,45 @@ export function InstitutionalVideo() {
     return () => observer.disconnect();
   }, [videoSrc]);
 
+  const useEmbed = Boolean(videoSrc && isEmbedUrl(videoSrc));
+
+  let media: ReactNode;
+  if (videoSrc && useEmbed) {
+    media = (
+      <iframe
+        src={videoSrc}
+        title="Vídeo institucional NavShip"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        className="aspect-video w-full rounded-[1.4rem] border-0 bg-black"
+      />
+    );
+  } else if (videoSrc) {
+    media = (
+      <video
+        ref={videoRef}
+        src={videoSrc}
+        poster={drydockPoster}
+        controls
+        muted
+        playsInline
+        preload="metadata"
+        className="aspect-video w-full rounded-[1.4rem] bg-black object-cover"
+      >
+        Seu navegador não suporta a reprodução de vídeo.
+      </video>
+    );
+  } else {
+    media = (
+      <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-[1.4rem] bg-black/40 px-6 text-center text-sm text-white/80">
+        <p>Vídeo institucional indisponível neste ambiente.</p>
+        <p className="text-xs text-white/60">
+          Configure VITE_INSTITUTIONAL_VIDEO_URL no build ou INSTITUTIONAL_VIDEO_URL no painel de deploy.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <section id="institucional" className="bg-background py-28">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-6 lg:grid-cols-[0.95fr_1.25fr] lg:items-center">
@@ -95,26 +158,7 @@ export function InstitutionalVideo() {
             <span>NavShip</span>
             <span>Navegantes/SC</span>
           </div>
-
-          {videoSrc ? (
-            <video
-              ref={videoRef}
-              src={videoSrc}
-              poster={drydockPoster}
-              controls
-              muted
-              playsInline
-              preload="metadata"
-              className="aspect-video w-full rounded-[1.4rem] bg-black object-cover"
-            >
-              Seu navegador não suporta a reprodução de vídeo.
-            </video>
-          ) : (
-            <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-[1.4rem] bg-black/40 px-6 text-center text-sm text-white/80">
-              <p>Vídeo institucional indisponível neste ambiente.</p>
-              <p className="text-xs text-white/60">Configure INSTITUTIONAL_VIDEO_URL no painel de deploy.</p>
-            </div>
-          )}
+          {media}
         </div>
       </div>
     </section>

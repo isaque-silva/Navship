@@ -1,0 +1,72 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve institutional video URL
+        id: video
+        env:
+          FROM_VITE_VAR: ${{ vars.VITE_INSTITUTIONAL_VIDEO_URL }}
+          FROM_VITE_SECRET: ${{ secrets.VITE_INSTITUTIONAL_VIDEO_URL }}
+          FROM_INSTITUTIONAL_VAR: ${{ vars.INSTITUTIONAL_VIDEO_URL }}
+          FROM_INSTITUTIONAL_SECRET: ${{ secrets.INSTITUTIONAL_VIDEO_URL }}
+        run: |
+          VIDEO_URL="${FROM_VITE_VAR:-}"
+          if [ -z "$VIDEO_URL" ]; then VIDEO_URL="${FROM_VITE_SECRET:-}"; fi
+          if [ -z "$VIDEO_URL" ]; then VIDEO_URL="${FROM_INSTITUTIONAL_VAR:-}"; fi
+          if [ -z "$VIDEO_URL" ]; then VIDEO_URL="${FROM_INSTITUTIONAL_SECRET:-}"; fi
+
+          if [ -z "$VIDEO_URL" ]; then
+            echo "::warning::Nenhuma URL de video institucional definida. Configure VITE_INSTITUTIONAL_VIDEO_URL ou INSTITUTIONAL_VIDEO_URL em Settings > Secrets and variables > Actions."
+          else
+            echo "Video institucional configurado para o build estatico."
+          fi
+
+          {
+            echo "url<<EOF"
+            echo "$VIDEO_URL"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build static site
+        env:
+          VITE_BASE_PATH: /Navship/
+          VITE_INSTITUTIONAL_VIDEO_URL: ${{ steps.video.outputs.url }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - name: Prepare GitHub Pages artifacts
+        run: npm run prepare:pages
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist/client
+          force_orphan: true
+          enable_jekyll: false

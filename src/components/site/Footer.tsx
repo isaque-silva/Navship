@@ -1,10 +1,11 @@
 import { useRouterState } from "@tanstack/react-router";
+import { getBasePath } from "@/lib/site";
 import { Logo } from "./Logo";
 
 export function Footer() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isHome = pathname === "/";
-  const hrefFor = (hash: string) => (isHome ? hash : `/${hash}`);
+  const hrefFor = (hash: string) => (isHome ? hash : `${getBasePath()}${hash}`);
   return (
     <footer className="border-t border-border bg-background py-14">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-6 md:grid-cols-4">
