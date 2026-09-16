@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import drydockPoster from "@/assets/drydock.jpg";
-import { getPublicConfigUrl } from "@/lib/site";
+import { getInstitutionalVideoUrl, getPublicConfigUrl } from "@/lib/site";
 
 type PublicConfigResponse = {
   institutionalVideoUrl?: string | null;
@@ -23,7 +23,7 @@ function isEmbedUrl(url: string): boolean {
 
 export function InstitutionalVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [videoSrc, setVideoSrc] = useState<string | null>(() => getInstitutionalVideoUrl());
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +48,7 @@ export function InstitutionalVideo() {
           setVideoSrc(url);
         }
       } catch {
-        /* Mantém player sem src se a API falhar. */
+        /* Mantém o fallback local se a API falhar. */
       }
     })();
 

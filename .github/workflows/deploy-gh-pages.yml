@@ -35,17 +35,15 @@ jobs:
           FROM_VITE_SECRET: ${{ secrets.VITE_INSTITUTIONAL_VIDEO_URL }}
           FROM_INSTITUTIONAL_VAR: ${{ vars.INSTITUTIONAL_VIDEO_URL }}
           FROM_INSTITUTIONAL_SECRET: ${{ secrets.INSTITUTIONAL_VIDEO_URL }}
+          DEFAULT_VIDEO_URL: https://stream.vidhosting.in/videos/c546daf3.mp4
         run: |
           VIDEO_URL="${FROM_VITE_VAR:-}"
           if [ -z "$VIDEO_URL" ]; then VIDEO_URL="${FROM_VITE_SECRET:-}"; fi
           if [ -z "$VIDEO_URL" ]; then VIDEO_URL="${FROM_INSTITUTIONAL_VAR:-}"; fi
           if [ -z "$VIDEO_URL" ]; then VIDEO_URL="${FROM_INSTITUTIONAL_SECRET:-}"; fi
+          if [ -z "$VIDEO_URL" ]; then VIDEO_URL="$DEFAULT_VIDEO_URL"; fi
 
-          if [ -z "$VIDEO_URL" ]; then
-            echo "::warning::Nenhuma URL de video institucional definida. Configure VITE_INSTITUTIONAL_VIDEO_URL ou INSTITUTIONAL_VIDEO_URL em Settings > Secrets and variables > Actions."
-          else
-            echo "Video institucional configurado para o build estatico."
-          fi
+          echo "Video institucional configurado para o build estatico."
 
           {
             echo "url<<EOF"
